@@ -1,0 +1,254 @@
+---
+title: "Analysis of Substance Abuse and Opioid Use Among Screened Inmates in Pennsylvania by Year and Gender"
+author: "Ainsley Carlson"
+date: "2025-09-30"
+
+output:
+  html_document:           # output document format
+    toc: yes               # add table contents
+    toc_float: yes         # toc_property: floating
+    toc_depth: 4           # depth of TOC headings
+    fig_width: 6           # global figure width
+    fig_height: 4          # global figure height
+    fig_caption: yes       # add figure caption
+    number_sections: yes   # numbering section headings
+    toc_collapsed: yes     # TOC subheading clapsing
+    code_folding: hide     # folding/showing code 
+    code_download: yes     # allow to download complete RMarkdown source code
+    smooth_scroll: yes     # scrolling text of the document
+    theme: lumen           # visual theme for HTML document only
+    highlight: tango       # code syntax hightlighting styles
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+  word_document:
+    toc: yes
+    toc_depth: '4'
+---
+
+```{css, echo = FALSE}
+div#TOC li {     /* table of content  */
+    list-style:upper-roman;
+    background-image:none;
+    background-repeat:none;
+    background-position:0;
+}
+
+h1.title {    /* level 1 header of title  */
+  font-size: 24px;
+  font-weight: bold;
+  color: DarkRed;
+  text-align: center;
+}
+
+h4.author { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkRed;
+  text-align: center;
+}
+
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+  text-align: center;
+}
+
+h1 { /* Header 1 - and the author and data headers use this too  */
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: center;
+}
+
+h2 { /* Header 2 - and the author and data headers use this too  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h3 { /* Header 3 - and the author and data headers use this too  */
+    font-size: 16px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - and the author and data headers use this too  */
+    font-size: 14px;
+  font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+/* Add dots after numbered headers */
+.header-section-number::after {
+  content: ".";
+}
+```
+
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+my_packages <- c("tidyverse", "readr", "RCur", "dplyr", "GGally", "vctrs", "gridExtra", "tinytex")                                    
+not_installed <- my_packages[!(my_packages %in% installed.packages()[ , "Package"])]  
+if(length(not_installed)) install.packages(not_installed)    
+install.packages("httr")
+install.packages("jsonlite")
+
+
+
+
+library(tidyverse)
+library(readr)
+library(RCurl)
+library(dplyr)
+library(GGally)
+library(vctrs)
+library(gridExtra)
+library(tinytex)
+
+```
+
+```{r dat, include=FALSE}
+#load data from github
+pa_educ <- read_csv("https://raw.githubusercontent.com/carlsonae/STA-551/refs/heads/main/project1/Inmate_Admissions_with_Substance_Use_Year_2016_-_Current_Quarterly_County_Corrections_20250930.csv")
+```
+### Introduction
+This analyses will explore if the percent of admissions with a diagnosed substance abuse problem varies by the gender and year of the admissions, and furthermore if the percent of new admissions with opioid use varies by the gender and year of the admissions. Further controlling for county where the new admissions are from, quarter in the year, and possibly age may be relevant. However, it is not possible to stratify by age and county of new admission as county level data includes aggregates all ages.
+
+
+### Dataset Information
+This dataset comes from the Pennsylvania Department of Corrections and consists of quartley data from 2016 to the current year by county. Dataset includes inmate admissions, average Texas Christian University Drug Screen II (TCU) score, number and percent of inmate admissions who identify opioids as top three drug of choice, inmates with a substance abuse problem, and number and percent who used opioids in the year prior to admission. There 7,722 observations and 20 variables within the dataset. 
+
+### Variable Descriptions
+Geographic Area [Character]: Name of State or County delineating the data that is shown in this row.
+
+County Name [Character]: County name from which the inmate was sentenced to the Pennsylvania Department of Corrections. 
+
+Gender [Character]: This is All for both male and female or just male or female delineating the data in the row.
+
+Age [Character]: The age group for the data in the row.
+
+Year and Quarter [Character]: The Year and Quarter of the data in the row.
+
+Time Period Dates [Character]: The beginning and end date of the data in the row.
+
+Calendar Year of Data [Numeric]: year
+
+Drug Screened Admissions [Numeric]: Total number of new commit admissions with valid Texas Christian University Drug Screen II (TCU) scores
+
+Average TCU Drug Screen Score [Numeric]: Average score on the Texas Christian University Drug Screens (TCU) among Department of Corrections (DOC) admissions who have scores. The TCU assesses for substance abuse issues and provides a score between 0 and 9. A score of 3 or higher indicates a substance use disorder. Link: http://ibr.tcu.edu/wp-content/uploads/2016/10/TCU-Drug-Screen-II-sg-v11.pdf
+
+
+New Admissions with Opioid Use [Numeric]: Number of new court admissions who used opiates as their top three drugs of choice, based on the TCU assessment results. The TCU Drug Screen II is scored to produce a single total score which can range from 0 to 9. Score values of 3 or greater indicate relatively severe drug-related problems, and correspond approximately to DSM drug dependence diagnosis. Responses to Item 10 indicate which drug (or drugs) the respondent feels is primarily responsible for his or her drug-related problems.
+
+Percent of New Admissions with Opioid Use [Numeric]: Percent of total new court admissions who used opiates as their top three drugs of choice.
+
+Admissions with Diagnosed Substance Abuse Problem [Numeric]: Number of new court admissions who had a TCU score of 3 or higher, indicating a substance abuse problem.The TCU Drug Screen II is scored to produce a single total score which can range from 0 to 9. Score values of 3 or greater indicate relatively severe drug-related problems, and correspond approximately to DSM drug dependence diagnosis. Responses to Item 10 indicate which drug (or drugs) the respondent feels is primarily responsible for his or her drug-related problems.
+
+Percent of Admissions with Diagnosed Substance Abuse Problem [Numeric]: Percent of new court admissions who had a TCU score of 3 or higher, indicating a substance abuse problem. The TCU Drug Screen II is scored to produce a single total score which can range from 0 to 9. Score values of 3 or greater indicate relatively severe drug-related problems, and correspond approximately to DSM drug dependence diagnosis. Responses to Item 10 indicate which drug (or drugs) the respondent feels is primarily responsible for his or her drug-related problems.
+
+Admissions with Opioid use in past 12 months [Numeric]: Number of new court admissions who self identified as using Opiates or Heroin in the prior 12 months before admission to DOC.
+
+Percent of Admissions with Opioid use in past 12 months [Numeric]: Percent of total new court admissions who self identified as using Opiates or Heroin in the prior 12 months before admission to DOC
+
+State FIPS [Numeric]: These are the first 2 digits of the 5-digit Federal Information Processing Standard (FIPS) code that designate the State association.
+
+County FIPS [Numeric]: The 3-digit part of the 5-digit county FIPS code specifically standing for the county.
+
+Latitude [Character]: A generic Latitude point within the county. A point is also provided for outside of the state (on a map it will sit to the southeast of the state). This number represents the total number for the state and this location provides a spot on a map to display the PA number without having it duplicate within a county when using in a mapping visual.
+
+Longitude [Character]: A generic Longitude point within the county. A point is also provided for outside of the state (on a map it will sit to the southeast of the state). This number represents the total number for the state and this location provides a spot on a map to display the PA number without having it duplicate within a county when using in a mapping visual.
+
+Georeferenced Latitude &Longitude [Character]:A generic georeferenced Latitude & Longitude point within the county. These points can be used to create visualizations such as maps to show the data by county. A point is also provided for outside of the state (on a map it will sit to the southeast of the state). This number represents the total number for the state and this location provides a spot on a map to display the PA number without having it duplicate within a county when using in a mapping visual.
+
+
+
+### Missing Values
+
+None of the variables have missing values except for "Georeferenced Lattitude &Longitude", which is not a variable of interest in out analysis. Therefore, there is no concern about what should be done with missing values and can proceed with the analysis. 
+
+### Exploratory Data Analysis
+#### Gender
+```{r gender, echo=FALSE}
+pa_educ %>%
+  filter(`Year and Quarter` %in% c("2016 Annual", "2017 Annual", "2018 Annual", "2019 Annual", "2020 Annual", "2021Annual", "2022 Annual") & Gender!="All") %>%
+  group_by(Gender) %>%
+  ggplot(aes(x = Gender, y = `Drug Screened Admissions`, fill=Gender)) +
+  geom_bar(stat = "identity") 
+
+```
+Looking at the number of new inmates who recieved a drug screening shows there is about 8 times as men as women, which is why it is important to use the percentages when looking at the amount who used opioid and/or had a substance abuse problem. Additionally, having a larger sample of men could lead to unequal comparisons between the genders, specifically on the county level. Looking at the overall state level there should not be and issue as there will be a large enough sample for each year between all the counties. 
+
+#### Drug Screenings
+```{r screenings, echo=FALSE}
+pa_educ %>%
+  filter(`Year and Quarter` %in% c("2016 Annual", "2017 Annual", "2018 Annual", "2019 Annual", "2020 Annual", "2021Annual", "2022 Annual") & Gender!="All" & `Geographic Area`=="County") %>%
+  ggplot(aes(x=`Drug Screened Admissions`, fill=Gender)) +
+  geom_density(alpha=0.6)
+
+```
+Looking at the density of drug screened admissions shows most counties have less than 100 screenings for men and nearly every county had less than 100 women screened, with most having less than 50. Both distributions are skewed right and there appears to be a county with over 1500 drug screened admissions. Looking at the data shows that Philadelphia had over 1000 drug screened admissions for both men and women in 2017, which make sense as Philadelphia is the most populous county in Pennsylvania. 
+
+#### New admissions with Diagnised Substance Abuse Problems
+```{r substanceabuse_year,echo=FALSE}
+pa_educ %>%
+  filter(`County Name`!="Commonwealth" & Age=="All (0 to 99 years)"  & Gender != "All") %>%
+  mutate(Year=as.numeric(Year), `Percent of Admissions with Diagnosed Substance Abuse Problem`= as.numeric(`Percent of Admissions with Diagnosed Substance Abuse Problem`)) %>%
+  ggplot(aes(x=Year, y=`Percent of Admissions with Diagnosed Substance Abuse Problem`, color=Gender)) +
+  geom_point()
+
+pa_educ %>%
+  group_by(Year, Gender) %>%
+  summarise_at(vars(`Percent of Admissions with Diagnosed Substance Abuse Problem`), list(name = mean))
+```
+Looking at the scatterplot of the percent of admissions with a substance abuse problem it is not clear if men or women have a higher percentage of substance abuse problems, but looking at the means show that men have a higher avrage percentage of prison admissions with a substance abuse problem. The percentage of new admissions with a substance abuse problem seem to skew higher than those with opioid use, which makes sense as all those classified with opioid use are classified as having a substance abuse problem, but not all those with a substance abuse problem have used opioids. Additionally there appear to be two outliers in 2016 that have a percentage above 100%, which is not plausible.
+
+
+##### Diagnosd Substance Abuse Outliers
+```{r substance outliers, echo=FALSE}
+pa_educ %>%
+  mutate(`Percent of Admissions with Diagnosed Substance Abuse Problem`= as.numeric(`Percent of Admissions with Diagnosed Substance Abuse Problem`)) %>%
+  filter((`Percent of Admissions with Diagnosed Substance Abuse Problem`>100))
+```
+Filtering the data for the outliers shows that female admissions in Columbia county in 2016 is responsible for one of the outliers due to the same reason for the outlier with opioid use. The other outlier comes from quarter 1 of 2016 in Delaware county when 12 admissions were screened, but 15 had a substance abuse problem. The one for Columbia county should be corrected after correcting for the issue with opioid use percentage, and a similar approach will be used for Delaware county as well. 
+
+
+
+#### New Admissions with Opioid Use by Year and Gender
+```{r opioid_year,echo=FALSE}
+pa_educ %>%
+  filter(`County Name`!="Commonwealth" & Age=="All (0 to 99 years)" & Gender != "All") %>%
+  mutate(Year=as.numeric(Year), `Percent of New Admissions with Opioid  Use`= as.numeric(`Percent of New Admissions with Opioid Use`)) %>%
+  ggplot(aes(x=Year, y=`Percent of New Admissions with Opioid Use`, color=Gender)) +
+  geom_point()
+
+pa_educ %>%
+  group_by(Year, Gender) %>%
+  summarise_at(vars(`Percent of New Admissions with Opioid Use`), list(name = mean))
+```
+Looking at the scatterplot of the percent of new admissions with opoid use from 2016 to 2022 by gender shows that between 2016 and 2019 a higher percentage of women had opiod use than men. However, in 2020 it seems that on average there may be a higher percentage of men with opiod use than women. This is confirmed by looking at the averages by gender and year as there are a higher percentage of men with opioid use than women. There also appears to be an outlier for women in 2016 with a percentage greater than 100%, which should not be possible. 
+
+##### Outliers
+```{r opioid outlier, echo=FALSE}
+pa_educ %>%
+  mutate(`Percent of New Admissions with Opioid  Use`= as.numeric(`Percent of New Admissions with Opioid Use`)) %>%
+  filter(`Percent of New Admissions with Opioid Use`>100) 
+pa_educ %>%
+  mutate(Year=as.numeric(Year)) %>%
+  filter(`County Name`=="Columbia" &  Year==2016 & Gender=="Female") 
+```
+Filtering the data shows that the outlier comes from Columbia county as they had 5 drug screened admissions, but 7 new admissions with opioid use. Furthermore, in quarter 1 of 2016 there were 4 new female admissions with opioid us, but there were no drug screened admissions. As the average TCU drug screen score is 5.5 for quarter 1 of 2016, it seems likely that there were new admissions screened. The only other quarter in 2016 that had drug screenings and anew admissions with opioid use in Columbia county was quarter 4 with 5 drug screenings and 3 having used opioids. It make sense then to assume there were 6 drug screenings in quarter 1 where 4 of them used opioids to have a similar percentage as quarter 4. Adjustments would also have to be made to correct for the 2016 annual for women and all in Coulumbia county.
+
+
+
